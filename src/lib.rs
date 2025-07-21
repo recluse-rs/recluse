@@ -1,13 +1,17 @@
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "reqwest")]
+pub mod downloader;
+
+#[cfg(feature = "reqwest")]
+pub use downloader::*;
+
 pub mod select;
 
 pub mod worker;
 
 pub use worker::*;
 
-#[cfg(feature = "reqwest")]
-pub mod downloader;
+pub mod utils;
 
-#[cfg(feature = "reqwest")]
-pub use downloader::*;
+pub use utils::*;

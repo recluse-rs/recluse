@@ -1,10 +1,9 @@
 use std::time::Duration;
 use log::debug;
 use anyhow::{Context, Result};
-use reqwest::{Method, Request, Url};
 use tokio::task::JoinSet;
 
-use recluse::{WorkPipeBuilder, JsonDownloaderLayer};
+use recluse::{print_errors, string_to_get_reqwest, JsonDownloaderLayer, WorkPipeBuilder};
 
 #[allow(dead_code)]
 mod api {
@@ -75,7 +74,7 @@ async fn main() -> Result<()> {
                 }
 
                 if let Some(next) = index.next {
-                    pokemon_index_pipe.submit_work(next).await
+                    pokemon_index_pipe.submit_work(next.to_string()).await
                         .context("Submit next page URL")?;
                 }
 
@@ -87,7 +86,8 @@ async fn main() -> Result<()> {
     // Wrap it into a tower::Service
     let pokemon_index_service = tower::ServiceBuilder::new()
         .rate_limit(1, Duration::from_secs(1))
-        .map_request(|url: String| reqwest::Request::new(Method::GET, Url::parse(&url).unwrap()))
+        .map_request(string_to_get_reqwest)
+        .filter(print_errors)
         .layer(JsonDownloaderLayer::<_>::new())
         .service_fn(pokemon_index_processor);
 
@@ -105,7 +105,8 @@ async fn main() -> Result<()> {
     // Wrap it into a tower::Service
     let pokemon_service = tower::ServiceBuilder::new()
         .rate_limit(3, Duration::from_secs(1))
-        .map_request(|url: String| Request::new(Method::GET, Url::parse(&url).unwrap()))
+        .map_request(string_to_get_reqwest)
+        .filter(print_errors)
         .layer(JsonDownloaderLayer::<_>::new())
         .service_fn(pokemon_processor);
 

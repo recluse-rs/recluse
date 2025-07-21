@@ -222,3 +222,10 @@ where
         })
     }
 }
+
+pub fn string_to_get_reqwest(url: String) -> Result<reqwest::Request, String> {
+    let url = Url::parse(&url)
+        .map_err(|e| format!("Error ({}) when parsing the following url: {}", e, url))?;
+    
+    Ok(Request::new(Method::GET, url))
+}
