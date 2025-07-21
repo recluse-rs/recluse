@@ -3,7 +3,7 @@ use log::*;
 use anyhow::{Context, Result};
 use scraper::{ElementRef, Html, Selector};
 
-use recluse::{WorkPipeBuilder, downloader::*};
+use recluse::{downloader::*, print_errors, WorkPipeBuilder};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
             
             async move {
                 // Parse the page in search of content of interest
-                let (quotes, next_page_request) = parse_quotes_page(page_body)
+                let (quotes, next_page_url) = parse_quotes_page(page_body)
                     .context("Could not parse quotes page")?;
 
                 // Just print out the quotes.
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
                 // This is the moment where the work counter comes to play.
                 // It's incremented when submitting work and decremented upon exiting this function.
                 // Therefore this worker can self-feed after the kick-off, but will stop when there's no more work.
-                if let Some(next_page_request) = next_page_request {
+                if let Some(next_page_request) = next_page_url {
                     page_pipe.submit_work(next_page_request).await
                         .context("Queue next page request")?;
                 }
@@ -55,8 +55,12 @@ async fn main() -> Result<()> {
     // Wrap it in a service with rate limiting.
     // This is where other layers like retries, duplicate removal etc. can go.
     let quotes_page_parser_service = tower::ServiceBuilder::new()
+        // This maps Strings to GET reqwest::Request objects
+        .map_request(string_to_get_reqwest)
+        // Any errors in the mapping are printed by the print_errors function and removed by filter
+        .filter(print_errors)
         .rate_limit(1, Duration::from_secs(1))
-        // This custom layer function provided by `recluse` automatically downloads pages and gives your service a raw HTML string,
+        // This layer executes requests and gives your service a raw HTML string,
         // so that you don't have to muck around with HTTP clients yourself.
         .layer(BodyDownloaderLayer)
         .service_fn(page_processor);
@@ -67,11 +71,7 @@ async fn main() -> Result<()> {
     });
 
     // Prime the work queue with front page
-    let initial_request = Request::new(
-        Method::GET,
-        "https://quotes.toscrape.com/".parse().expect("Parse initial URL"));
-
-    page_pipe.submit_work(initial_request).await
+    page_pipe.submit_work("https://quotes.toscrape.com/".to_string()).await
         .context("Sent initial request")?;
 
     // Wait until worker is done
@@ -97,7 +97,7 @@ static  NEXT_PAGE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::pars
     .expect("Next page selector should be valid"));
 
 /// Search the body of a page in search of quotes (may be empty) and find the next page (may be None).
-fn parse_quotes_page(body: String) -> Result<(Vec<Quote>, Option<Request>)> {
+fn parse_quotes_page(body: String) -> Result<(Vec<Quote>, Option<String>)> {
     let document = Html::parse_document(&body);
 
     // Parse the quotes on the current page
@@ -115,12 +115,7 @@ fn parse_quotes_page(body: String) -> Result<(Vec<Quote>, Option<Request>)> {
         .map(|s| s.to_string());
 
     if let Some(next_page_href) = next_page_href {
-        let next_page_url = Url::parse(&format!("https://quotes.toscrape.com{}", next_page_href))
-            .context("Construct next page URL")?;
-
-        Ok((quotes, Some(Request::new(
-            Method::GET,
-            next_page_url))))
+        Ok((quotes, Some(format!("https://quotes.toscrape.com{}", next_page_href))))
     } else {
         Ok((quotes, None))
     }

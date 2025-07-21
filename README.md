@@ -118,16 +118,24 @@ That is to say, using `recluse` does not pull `anyhow` as a dependency.
 Next part uses `tower`'s service composition pattern to actually produce a `tower::Service`:
 
 ```rust
-let quotes_page_parser_service = tower::ServiceBuilder::new()
-    .rate_limit(1, Duration::from_secs(1))
-    .layer(BodyDownloaderLayer)
-    .service_fn(page_processor);
+    let quotes_page_parser_service = tower::ServiceBuilder::new()
+        .map_request(string_to_get_reqwest)
+        .filter(print_errors)
+        .rate_limit(1, Duration::from_secs(1))
+        .layer(BodyDownloaderLayer)
+        .service_fn(page_processor);
 ```
 
-Here, we only apply a simple 1/second throttle, but, if you're familiar with `tower`, you'll know that many more options exist,
+We start by attaching a mapper ([`recluse::string_to_get_reqwest`]) that takes [`String`]s and converts them to GET [`reqwest::Request`]s
+(requires the `reqwest` feature of this crate).
+
+Parsing a URL can fail, so we pass the result into [`recluse::print_errors`], which is an identity function with a side effect of
+printing any errors coming through. `filter()` itself will remove any errors from the stream.
+
+We then apply a simple 1/second throttle, but, if you're familiar with `tower`, you'll know that many more options exist,
 like retries and timeouts, that would be appropriate in a crawler.
 
-We also attach a custom `recluse::BodyDownloaderLayer` which handles the HTTP Client for you (requires the `reqwest` feature of this crate),
+Next up is [`recluse::BodyDownloaderLayer`], which handles the HTTP Client for you (requires the `reqwest` feature of this crate),
 such that you only write a function of `String`, not `reqwest::Request`.
 
 And in case you're wondering, yes, there is a `recluse::JsonDownloaderLayer` which attempts to deserialize the HTTP response
@@ -144,11 +152,7 @@ let worker = tokio::spawn(async move {
 And give the spider its initial page by simply queuing it into the same pipe:
 
 ```rust
-let initial_request = Request::new(
-    Method::GET,
-    "https://quotes.toscrape.com/".parse().expect("Parse initial URL"));
-
-page_pipe.submit_work(initial_request).await
+page_pipe.submit_work("https://quotes.toscrape.com/".to_string()).await
     .context("Sent initial request")?;
 ```
 
