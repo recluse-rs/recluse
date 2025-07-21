@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+pub mod select;
+
 pub mod worker;
 
 pub use worker::*;

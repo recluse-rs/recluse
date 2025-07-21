@@ -31,10 +31,23 @@ anyhow = "1.0.98"
 clap = "4.5.41"
 colog = "1.3.0"
 scraper = "0.23.1"
+serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.46.1", features = ["full"] }
 tower = { version = "0.5.2", features = ["limit"] }
+
+[package.metadata.docs.rs]
+rustdoc-args = [
+    "--extern-html-root-url", "serde=https://docs.rs/serde/latest/serde/",
+    "--extern-html-root-url", "tokio=https://docs.rs/tokio/latest/tokio/",
+    "--extern-html-root-url", "tower=https://docs.rs/tower/latest/tower/",
+]
 
 [[example]]
 name = "01_quotes"
 path = "examples/01_quotes/main.rs"
+required-features = ["reqwest"]
+
+[[example]]
+name = "02_pokeapi"
+path = "examples/02_pokeapi/main.rs"
 required-features = ["reqwest"]
