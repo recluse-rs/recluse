@@ -42,6 +42,9 @@ That being said, some choices have been made to make development more ergonomic:
   Through it, `recluse` provides a convenient wrapper that downloads pages for you (as raw text, or JSON-deserialized
   with [`serde`](https://docs.rs/serde/latest/serde/)), so you can focus on processing.
   It's gated by an (optional) feature, `reqwest`, so you're opted out of including it by default.
+- [`leaky-bucket`](https://docs.rs/leaky-bucket/latest/leaky_bucket/) is an implementation of the
+  [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket) algorithm. This crate provides a a rate limiter layer that uses it
+  internally. This dependency is only pulled if you enable the `limit` feature.
 
 # Quickstart
 
@@ -132,9 +135,10 @@ Parsing a URL can fail, so any `Err`s produced by the map are output to [`log::w
 Only valid request objects continue further.
 
 We then apply a simple 1/second throttle, but, if you're familiar with `tower`, you'll know that many more options exist,
-like retries and timeouts, that would be appropriate in a crawler.
+like retries and timeouts, that would be appropriate in a crawler. `recluse` also provides a `LeakyBucketRateLimiterLayer`,
+which allows a rate limiter to be shared among multiple workers.
 
-Next up is [`recluse::BodyDownloaderLayer`], which handles the HTTP Client for you (requires the `reqwest` feature of this crate),
+Next up is `recluse::BodyDownloaderLayer`, which handles the HTTP Client for you (requires the `reqwest` feature of this crate),
 such that you only write a function of `String`, not `reqwest::Request`.
 
 And in case you're wondering, yes, there is a `recluse::JsonDownloaderLayer` which attempts to deserialize the HTTP response

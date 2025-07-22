@@ -25,7 +25,7 @@ serde = { version = "1.0.219", optional = true }
 serde_json = { version = "1.0.141", optional = true }
 thiserror = "2.0.12"
 tokio = { version = "1.46.1", features = ["sync"] }
-tower = { version = "0.5.2", features = ["util"] }
+tower = { version = "0.5.2", features = ["util", "filter"] }
 url = { version = "2.5.4", optional = true }
 
 [dev-dependencies]
@@ -36,7 +36,7 @@ colog = "1.3.0"
 scraper = "0.23.1"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.46.1", features = ["full"] }
-tower = { version = "0.5.2", features = ["filter", "limit"] }
+tower = { version = "0.5.2", features = ["limit"] }
 
 [package.metadata.docs.rs]
 rustdoc-args = [
