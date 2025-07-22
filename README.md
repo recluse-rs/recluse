@@ -48,6 +48,22 @@ That being said, some choices have been made to make development more ergonomic:
 
 # Quickstart
 
+```
+$ cargo add recluse
+```
+
+If you want all the optional features (pulls `reqwest` and `leaky-bucket`, which you might not want/need):
+
+```
+$ cargo add recluse -F full
+```
+
+Alternatively, add directly to `Cargo.toml` under `[dependencies]`:
+
+```
+recluse = "0.1.0"
+```
+
 I recommend going through the examples included in this repository to understand how crawlers are built with `recluse`.
 
 We'll go here through the first one, which simply extracts quotes from [Quotes to Scrape](https://quotes.toscrape.com/),

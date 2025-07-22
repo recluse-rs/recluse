@@ -14,6 +14,8 @@ exclude = [
 
 [features]
 default = []
+full = ["limit", "reqwest"]
+
 limit = ["dep:leaky-bucket"]
 reqwest = ["dep:reqwest", "dep:serde", "dep:serde_json", "dep:url"]
 
