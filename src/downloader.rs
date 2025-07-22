@@ -2,7 +2,7 @@ use std::{marker::PhantomData, pin::Pin, sync::LazyLock};
 use log::debug;
 pub use reqwest::{Client, Method, Request, Url};
 use serde::de::DeserializeOwned;
-use tower::{Layer, Service};
+use tower::{Layer, Service, ServiceBuilder, layer::util::Stack, util::MapRequestLayer};
 
 /// Errors that occur can in scope of a downloader.
 #[derive(Debug, thiserror::Error)]
@@ -223,9 +223,24 @@ where
     }
 }
 
-pub fn string_to_get_reqwest(url: String) -> Result<reqwest::Request, String> {
-    let url = Url::parse(&url)
-        .map_err(|e| format!("Error ({}) when parsing the following url: {}", e, url))?;
+/// Convert a [`String`] to a GET [`reqwest::Request`].
+pub fn string_to_get_reqwest(url: String) -> Result<reqwest::Request, url::ParseError> {
+    let url = Url::parse(&url)?;
     
     Ok(Request::new(Method::GET, url))
+}
+
+pub trait ServiceBuilderReqwestExt {
+    type Output;
+
+    /// Convert [`String`]s to GET [`reqwest::Request`]s.
+    fn map_string_to_reqwest_get(self) -> Self::Output;
+}
+
+impl<L> ServiceBuilderReqwestExt for ServiceBuilder<L> {
+    type Output = ServiceBuilder<Stack<MapRequestLayer<fn(String) -> Result<reqwest::Request, url::ParseError>>, L>>;
+    
+    fn map_string_to_reqwest_get(self) -> Self::Output {
+        self.map_request(string_to_get_reqwest)
+    }
 }

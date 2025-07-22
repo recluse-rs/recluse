@@ -119,18 +119,17 @@ Next part uses `tower`'s service composition pattern to actually produce a `towe
 
 ```rust
     let quotes_page_parser_service = tower::ServiceBuilder::new()
-        .map_request(string_to_get_reqwest)
-        .filter(print_errors)
+        .map_string_to_reqwest_get()
+        .print_and_drop_request_errors()
         .rate_limit(1, Duration::from_secs(1))
         .layer(BodyDownloaderLayer)
         .service_fn(page_processor);
 ```
 
-We start by attaching a mapper ([`recluse::string_to_get_reqwest`]) that takes [`String`]s and converts them to GET [`reqwest::Request`]s
-(requires the `reqwest` feature of this crate).
+We start by mapping raw [`String`]s to proper GET [`reqwest::Request`]s (requires the `reqwest` feature of this crate).
 
-Parsing a URL can fail, so we pass the result into [`recluse::print_errors`], which is an identity function with a side effect of
-printing any errors coming through. `filter()` itself will remove any errors from the stream.
+Parsing a URL can fail, so any `Err`s produced by the map are output to [`log::warn`] and discarded.
+Only valid request objects continue further.
 
 We then apply a simple 1/second throttle, but, if you're familiar with `tower`, you'll know that many more options exist,
 like retries and timeouts, that would be appropriate in a crawler.
@@ -139,7 +138,7 @@ Next up is [`recluse::BodyDownloaderLayer`], which handles the HTTP Client for y
 such that you only write a function of `String`, not `reqwest::Request`.
 
 And in case you're wondering, yes, there is a `recluse::JsonDownloaderLayer` which attempts to deserialize the HTTP response
-into a strongly typed object of your choosing. Useful if you're traversing an API, not a website.
+into a strongly typed object of your choosing. Useful if you're traversing an API, not a website. See the PokeAPI example.
 
 We then kick the worker into its own thread, here with `tokio`:
 

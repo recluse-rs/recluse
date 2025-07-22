@@ -3,7 +3,7 @@ use log::*;
 use anyhow::{Context, Result};
 use scraper::{ElementRef, Html, Selector};
 
-use recluse::{downloader::*, print_errors, WorkPipeBuilder};
+use recluse::{downloader::*, ServiceBuilderUtilsExt, WorkPipeBuilder};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -56,15 +56,15 @@ async fn main() -> Result<()> {
     // This is where other layers like retries, duplicate removal etc. can go.
     let quotes_page_parser_service = tower::ServiceBuilder::new()
         // This maps Strings to GET reqwest::Request objects
-        .map_request(string_to_get_reqwest)
-        // Any errors in the mapping are printed by the print_errors function and removed by filter
-        .filter(print_errors)
+        .map_string_to_reqwest_get()
+        // Print out any errors in the mapping and drop them from the "stream"
+        .print_and_drop_request_error()
         .rate_limit(1, Duration::from_secs(1))
         // This layer executes requests and gives your service a raw HTML string,
         // so that you don't have to muck around with HTTP clients yourself.
         .layer(BodyDownloaderLayer)
         .service_fn(page_processor);
-    
+
     // Spawn the worker for this pipe
     let worker = tokio::spawn(async move {
         page_worker.work(quotes_page_parser_service).await

@@ -3,7 +3,7 @@ use log::debug;
 use anyhow::{Context, Result};
 use tokio::task::JoinSet;
 
-use recluse::{print_errors, string_to_get_reqwest, JsonDownloaderLayer, WorkPipeBuilder};
+use recluse::{JsonDownloaderLayer, ServiceBuilderReqwestExt, ServiceBuilderUtilsExt, WorkPipeBuilder};
 
 #[allow(dead_code)]
 mod api {
@@ -86,8 +86,8 @@ async fn main() -> Result<()> {
     // Wrap it into a tower::Service
     let pokemon_index_service = tower::ServiceBuilder::new()
         .rate_limit(1, Duration::from_secs(1))
-        .map_request(string_to_get_reqwest)
-        .filter(print_errors)
+        .map_string_to_reqwest_get()
+        .print_and_drop_request_error()
         .layer(JsonDownloaderLayer::<_>::new())
         .service_fn(pokemon_index_processor);
 
@@ -105,8 +105,8 @@ async fn main() -> Result<()> {
     // Wrap it into a tower::Service
     let pokemon_service = tower::ServiceBuilder::new()
         .rate_limit(3, Duration::from_secs(1))
-        .map_request(string_to_get_reqwest)
-        .filter(print_errors)
+        .map_string_to_reqwest_get()
+        .print_and_drop_request_error()
         .layer(JsonDownloaderLayer::<_>::new())
         .service_fn(pokemon_processor);
 
