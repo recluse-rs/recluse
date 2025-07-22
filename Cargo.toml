@@ -1,11 +1,14 @@
 [package]
 name = "recluse"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Misza <misza@misza.net>"]
 description = "A web crawler framework for Rust"
-license = "MIT"
+license = "MIT-0"
 readme = "README.md"
+repository = "https://github.com/recluse-rs/recluse"
+keywords = ["crawler", "scraper", "spider"]
+categories = ["concurrency", "web-programming", "rust-patterns"]
 
 exclude = [
     "examples/*",

@@ -61,7 +61,7 @@ $ cargo add recluse -F full
 Alternatively, add directly to `Cargo.toml` under `[dependencies]`:
 
 ```
-recluse = "0.1.0"
+recluse = "0.1.1"
 ```
 
 I recommend going through the examples included in this repository to understand how crawlers are built with `recluse`.
