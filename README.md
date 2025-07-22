@@ -1,3 +1,7 @@
+[![crates.io](https://img.shields.io/crates/v/recluse.svg?style=flat-square)](https://crates.io/crates/recluse)
+[![docs.rs](https://img.shields.io/docsrs/recluse?style=flat-square)](https://docs.rs/recluse)
+[![MIT-0](https://img.shields.io/crates/l/recluse.svg?style=flat-square)](https://github.com/recluse-rs/recluse?tab=MIT-0-1-ov-file#readme)
+
 `recluse` is both a crate and a guide to help you write web crawlers in Rust.
 It was originally inspired by [Scrapy](https://www.scrapy.org/), a legendary Python framework for writing web scrapers
 (which now calls itself a "data extraction framework") but it has deviated in its achitecture to be more Rust-idiomatic:
