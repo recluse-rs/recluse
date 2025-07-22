@@ -1,6 +1,6 @@
 use std::sync::{atomic::AtomicUsize, Arc, LazyLock};
 
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use tokio::sync::{mpsc, watch};
 use tower::{Service, ServiceExt};
 
@@ -82,13 +82,15 @@ impl<T> Worker<T> {
                 Either::Left(Err(why)) => return Err(WorkPipeError::ShutdownReceive(why)),
                 Either::Right(Some(work)) => {
                     trace!("Received work");
-                    service.ready().await
+                    let result = service.ready().await
                         .map_err(|e| WorkPipeError::ServiceNotReady(e))?
-                        .call(work).await
-                        .map_err(|e| WorkPipeError::ServiceCall(e))?;
+                        .call(work).await;
+
+                    if let Err(why) = result {
+                        warn!("Error while processing work: {why}");
+                    }
                     
                     self.work_completed::<S>().await?;
-                        // .map_err(|e| WorkPipeError::ShutdownSend(e))?;
                 },
                 Either::Right(None) => {
                     trace!("Channel closed");
