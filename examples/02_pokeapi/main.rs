@@ -1,9 +1,9 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use log::debug;
 use anyhow::{Context, Result};
 use tokio::task::JoinSet;
 
-use recluse::{JsonDownloaderLayer, ServiceBuilderReqwestExt, ServiceBuilderUtilsExt, WorkPipeBuilder};
+use recluse::{JsonDownloaderLayer, LeakyBucketRateLimiterLayer, ServiceBuilderReqwestExt, ServiceBuilderUtilsExt, WorkPipeBuilder};
 
 #[allow(dead_code)]
 mod api {
@@ -55,6 +55,12 @@ async fn main() -> Result<()> {
     let (pokemon_index_pipe, pokemon_index_worker) = WorkPipeBuilder::default().build();
     let (pokemon_pipe, pokemon_worker) = WorkPipeBuilder::default().build();
 
+    // The two workers hit the same website, therefore they need to share the rate limiter
+    let limiter = Arc::new(leaky_bucket::RateLimiter::builder()
+        .initial(1).max(4)
+        .refill(1).interval(Duration::from_secs(1))
+        .build());
+
     // Process pages that are indexes of Pokemons
     let pokemon_index_processor = {
         let pokemon_index_pipe = pokemon_index_pipe.clone();
@@ -85,7 +91,7 @@ async fn main() -> Result<()> {
 
     // Wrap it into a tower::Service
     let pokemon_index_service = tower::ServiceBuilder::new()
-        .rate_limit(1, Duration::from_secs(1))
+        .layer(LeakyBucketRateLimiterLayer::new(limiter.clone()))
         .map_string_to_reqwest_get()
         .print_and_drop_request_error()
         .layer(JsonDownloaderLayer::<_>::new())
@@ -93,18 +99,16 @@ async fn main() -> Result<()> {
 
     // Process a single Pokemon page
     let pokemon_processor = {
-        move |pokemon: api::Pokemon| {
-            async move {
-                debug!("{:?}", pokemon);
+        async move |pokemon: api::Pokemon| {
+            debug!("{:?}", pokemon);
 
-                anyhow::Ok(())
-            }
+            anyhow::Ok(())
         }
     };
 
     // Wrap it into a tower::Service
     let pokemon_service = tower::ServiceBuilder::new()
-        .rate_limit(3, Duration::from_secs(1))
+        .layer(LeakyBucketRateLimiterLayer::new(limiter))
         .map_string_to_reqwest_get()
         .print_and_drop_request_error()
         .layer(JsonDownloaderLayer::<_>::new())
